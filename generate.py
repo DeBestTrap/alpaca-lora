@@ -1,19 +1,24 @@
+# %%
 import sys
 import torch
 from peft import PeftModel
 import transformers
 import gradio as gr
 
-assert (
-    "LlamaTokenizer" in transformers._import_structure["models.llama"]
-), "LLaMA is now in HuggingFace's main branch.\nPlease reinstall it: pip uninstall transformers && pip install git+https://github.com/huggingface/transformers.git"
-from transformers import LlamaTokenizer, LlamaForCausalLM, GenerationConfig
+# from transformers import GPT2Tokenizer as Tokenizer
+# from transformers import GPT2LMHeadModel as Model
+from transformers import AutoModelForCausalLM as Model
+from transformers import AutoTokenizer as Tokenizer
+from transformers import GenerationConfig 
+# from transformers import LlamaTokenizer, LlamaForCausalLM, GenerationConfig
 
-tokenizer = LlamaTokenizer.from_pretrained("decapoda-research/llama-7b-hf")
 
 LOAD_8BIT = False
-BASE_MODEL = "decapoda-research/llama-7b-hf"
-LORA_WEIGHTS = "tloen/alpaca-lora-7b"
+# BASE_MODEL = "gpt2-xl"
+# LORA_WEIGHTS = "./lora/gpt2-mod/"
+BASE_MODEL = "EleutherAI/gpt-j-6B"
+LORA_WEIGHTS = "lora/gptj-chip2"
+
 
 if torch.cuda.is_available():
     device = "cuda"
@@ -26,10 +31,14 @@ try:
 except:
     pass
 
+
+# %%
 if device == "cuda":
-    model = LlamaForCausalLM.from_pretrained(
+    model = Model.from_pretrained(
         BASE_MODEL,
         load_in_8bit=LOAD_8BIT,
+        # revision="float16",
+        revision="sharded",
         torch_dtype=torch.float16,
         device_map="auto",
     )
@@ -37,9 +46,10 @@ if device == "cuda":
         model,
         LORA_WEIGHTS,
         torch_dtype=torch.float16,
+        device_map="auto"
     )
 elif device == "mps":
-    model = LlamaForCausalLM.from_pretrained(
+    model = Model.from_pretrained(
         BASE_MODEL,
         device_map={"": device},
         torch_dtype=torch.float16,
@@ -51,7 +61,7 @@ elif device == "mps":
         torch_dtype=torch.float16,
     )
 else:
-    model = LlamaForCausalLM.from_pretrained(
+    model = Model.from_pretrained(
         BASE_MODEL, device_map={"": device}, low_cpu_mem_usage=True
     )
     model = PeftModel.from_pretrained(
@@ -60,7 +70,14 @@ else:
         device_map={"": device},
     )
 
+# %%
+# tokenizer = LlamaTokenizer.from_pretrained("decapoda-research/llama-7b-hf")
+tokenizer = Tokenizer.from_pretrained(BASE_MODEL)
 
+# %%
+print(tokenizer.tokenize("\n\n"))
+print(tokenizer.convert_tokens_to_ids(tokenizer.tokenize("\n\n")))
+# %% Functions
 def generate_prompt(instruction, input=None):
     if input:
         return f"""Below is an instruction that describes a task, paired with an input that provides further context. Write a response that appropriately completes the request.
@@ -95,6 +112,9 @@ def evaluate(
     top_p=0.75,
     top_k=40,
     num_beams=4,
+    repetition_penalty=1.2,
+    length_penalty=1,
+    ngram_size=0,
     max_new_tokens=128,
     **kwargs,
 ):
@@ -102,10 +122,21 @@ def evaluate(
     inputs = tokenizer(prompt, return_tensors="pt")
     input_ids = inputs["input_ids"].to(device)
     generation_config = GenerationConfig(
+        pad_token_id=-1,
+        bos_token_id=0,
+        eos_token_id=2,
+        # eos_token_id=2,
+        # do_sample=True,
         temperature=temperature,
         top_p=top_p,
         top_k=top_k,
         num_beams=num_beams,
+        repetition_penalty=repetition_penalty,
+        length_penalty=length_penalty,
+        no_repeat_ngram_size=ngram_size,
+        # max_new_tokens=128,
+        # length_penalty=-1.0,
+        # early_stopping=True,
         **kwargs,
     )
     with torch.no_grad():
@@ -118,8 +149,10 @@ def evaluate(
         )
     s = generation_output.sequences[0]
     output = tokenizer.decode(s)
-    return output.split("### Response:")[1].strip()
+    # return output.split("### Response:")[1].strip()
+    return output.split("### Response:")[-1].split("\n\n")[0].strip() + "\n\n" + output
 
+# %%
 
 gr.Interface(
     fn=evaluate,
@@ -128,10 +161,13 @@ gr.Interface(
             lines=2, label="Instruction", placeholder="Tell me about alpacas."
         ),
         gr.components.Textbox(lines=2, label="Input", placeholder="none"),
-        gr.components.Slider(minimum=0, maximum=1, value=0.1, label="Temperature"),
+        gr.components.Slider(minimum=0, maximum=1, value=0.8, label="Temperature"),
         gr.components.Slider(minimum=0, maximum=1, value=0.75, label="Top p"),
         gr.components.Slider(minimum=0, maximum=100, step=1, value=40, label="Top k"),
-        gr.components.Slider(minimum=1, maximum=4, step=1, value=4, label="Beams"),
+        gr.components.Slider(minimum=1, maximum=4, step=1, value=3, label="Beams"),
+        gr.components.Slider(minimum=1, maximum=2, step=0.05, value=1.2, label="Repetition Penalty"),
+        gr.components.Slider(minimum=-3, maximum=3, step=0.05, value=1, label="Length Penalty"),
+        gr.components.Slider(minimum=0, maximum=10, step=1, value=0, label="ngram size"),
         gr.components.Slider(
             minimum=1, maximum=2000, step=1, value=128, label="Max tokens"
         ),
@@ -166,3 +202,5 @@ if __name__ == "__main__":
         print("Response:", evaluate(instruction))
         print()
 """
+
+# %%

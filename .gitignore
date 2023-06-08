@@ -1,6 +1,7 @@
 out/
 7B/
 13B/
+.vscode/
 __pycache__/
 checkpoint**
 minimal-llama**
@@ -8,3 +9,7 @@ upload.py
 lora-**
 *ckpt
 wandb
+venv/
+lora/
+data/
+recent_models_cache.json

@@ -1,0 +1,44 @@
+{
+  "GPT-2": {
+    "version": [
+      "gpt2",
+      "gpt2-medium",
+      "gpt2-large",
+      "gpt2-xl"
+    ],
+    "target_modules": [
+      "c_attn"
+    ],
+    "revision": [
+      "main"
+    ]
+  },
+  "GPT-J": {
+    "version": [
+      "EleutherAI/gpt-j-6B"
+    ],
+    "target_modules": [
+      "q_proj",
+      "v_proj"
+    ],
+    "revision": [
+      "main",
+      "float32",
+      "float16",
+      "sharded"
+    ]
+  },
+  "LLaMA": {
+    "version": [
+      "decapoda-research/llama-7b-hf"
+    ],
+    "target_modules": [
+      "q_proj",
+      "v_proj"
+    ],
+    "revision": [
+      "main",
+      "1.0-a1"
+    ]
+  }
+}
