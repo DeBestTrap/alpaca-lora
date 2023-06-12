@@ -92,7 +92,7 @@ def create_model(version: str,
     If a model already is loaded then the old model will be replaced by the new one.
 
     Return:
-        loaded_model_text:str - (version + revision)
+        A str containing the version and revision of the model
     '''
     global model
     global tokenizer
@@ -134,7 +134,7 @@ def prepare_model_for_generating(load_8bit: str,
     Load a PEFT model with a LoRA for generating text
 
     Returns:
-        loaded_model_text:str - 
+        A str containing the version and revision of the model
     '''
     global model
     global loaded_model_text
@@ -165,6 +165,12 @@ def prepare_model_for_generating(load_8bit: str,
 
 def prepare_model_for_training(target_modules: List[str],
                                progress=gr.Progress(track_tqdm=True)):
+    '''
+    Load a PEFT model with hyperparameters to train a LoRA
+
+    Returns:
+        A str containing the version and revision of the model
+    '''
     global model
     global loaded_model_text
     model = prepare_model_for_int8_training(model)
@@ -198,8 +204,13 @@ def tokenize(prompt):
 
 
 def generate_and_tokenize_prompt(data_point):
-    # This function masks out the labels for the input,
-    # so that our loss is computed only on the response.
+    '''
+    This function masks out the labels for the input,
+    so that our loss is computed only on the response.
+
+    Returns:
+        Dictionary containing input ids, labels and attention mask
+    '''
     user_prompt = ((
         f"""Below is an instruction that describes a task, paired with an input that provides further context. Write a response that appropriately completes the request.
 
@@ -250,6 +261,12 @@ def train(data_path: str,
           learning_rate: int,
           val_set_size: int,
           progress=gr.Progress(track_tqdm=True)):
+    '''
+    Trains a LoRA and saves it in the lora directory
+
+    Returns:
+        A str indicating the result of the training
+    '''
     global model
     try:
         assert(model)
@@ -334,14 +351,25 @@ def train(data_path: str,
     print(
         "\n If there's a warning about missing keys above, please disregard :)"
     )
+    return f"LoRA saved at {output_dir}"
 
 
 def load_models_json():
+    '''
+    Get parameters for loading models
+
+    Returns:
+        A dictionary containing parameters related to loading models.
+    '''
     with open("choices_models.json") as f:
         return json.load(f)
 
 
 def generate_prompt(instruction, input=None):
+    '''
+    Returns:
+        A prompt formatted with instruction (and input if provided)
+    '''
     if input:
         return f"""Below is an instruction that describes a task, paired with an input that provides further context. Write a response that appropriately completes the request.
 
@@ -376,6 +404,12 @@ def generate(
         progress=gr.Progress(track_tqdm=True),
         **kwargs,
 ):
+    '''
+    Generate a response to the instruction provided.
+
+    Reurns:
+      A string a with a response to the instruction provided
+    '''
     global model
     try:
         assert(model)
@@ -450,6 +484,10 @@ def evaluate_model(data_path: list,
                    lora_weights: str,
                    base_model: str,
                    progress=gr.Progress(track_tqdm=True)):
+    '''
+    Don't use yet
+    TODO Finish this
+    '''
     global model
     try:
         assert(model)
@@ -540,7 +578,14 @@ def evaluate_model(data_path: list,
 def generate_prompt_boolq(passage:str, instruction:str, prompt_style:str):
     '''
     Generates a prompt depending on the prompt_style provided.
-    prompt_style can be "Zero-Shot", "One-Shot", "Few-Shot"
+
+    Sources:
+        https://en.wikipedia.org/wiki/Final_Fantasy_XIV
+
+    Args:
+        prompt_style can be "Zero-Shot", "One-Shot", "Few-Shot"
+    Returns:
+        A str containing the prompt
     '''
 
     if prompt_style == "Zero-Shot":
@@ -584,6 +629,14 @@ Based on this passage:
 
 
 def generate_boolq_responses(prompt_style:str, progress=gr.Progress(track_tqdm=True)):
+    '''
+    Generates responses for the BoolQ dataset.
+
+    Args:
+        prompt_style can be "Zero-Shot", "One-Shot", "Few-Shot"
+    Returns:
+        A str indicating the result of the generation
+    '''
     global model
     try:
         assert(model)
@@ -608,6 +661,12 @@ def generate_boolq_responses(prompt_style:str, progress=gr.Progress(track_tqdm=T
 
 # %%
 def evaluate_boolq_responses():
+    '''
+    Evaluates the responses generated for the BoolQ dataset.
+
+    Returns:
+        A str of the accuracy of the responses
+    '''
     # TODO add files wtih dropdown
     data = load_dataset("boolq")
     data = data["validation"]
