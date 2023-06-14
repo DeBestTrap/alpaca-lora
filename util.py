@@ -579,13 +579,15 @@ def generate_prompt_boolq(passage:str, instruction:str, prompt_style:str):
     '''
     Generates a prompt depending on the prompt_style provided.
 
-    Sources:
-        https://en.wikipedia.org/wiki/Final_Fantasy_XIV
-
     Args:
         prompt_style can be "Zero-Shot", "One-Shot", "Few-Shot"
     Returns:
         A str containing the prompt
+
+    Sources:
+        https://en.wikipedia.org/wiki/Final_Fantasy_XIV
+        https://en.wikipedia.org/wiki/Chinese_language
+        https://en.wikipedia.org/wiki/Japan
     '''
 
     if prompt_style == "Zero-Shot":
@@ -598,7 +600,7 @@ def generate_prompt_boolq(passage:str, instruction:str, prompt_style:str):
         return f'''Based on this passage:
 Final Fantasy XIV is a massively multiplayer online role-playing game (MMORPG) developed and published by Square Enix. Directed and produced by Naoki Yoshida, it was released worldwide for PlayStation 3 and Windows in August 2013, as a replacement for the failed 2010 version of the game, with support for PlayStation 4, OS X, and PlayStation 5 releasing later.
 
-is Final Fantasy XIV made by Square Enix
+is final fantasy xiv made by square enix
 
 ### Response:
 Yes, Final Fantasy XIV is developed by Square Enix.
@@ -613,10 +615,28 @@ Based on this passage:
         return f'''Based on this passage:
 Final Fantasy XIV is a massively multiplayer online role-playing game (MMORPG) developed and published by Square Enix. Directed and produced by Naoki Yoshida, it was released worldwide for PlayStation 3 and Windows in August 2013, as a replacement for the failed 2010 version of the game, with support for PlayStation 4, OS X, and PlayStation 5 releasing later.
 
-is Final Fantasy XIV made by Square Enix
+is final fantasy xiv made by square enix
 
 ### Response:
 Yes, Final Fantasy XIV is developed by Square Enix.
+
+### Instruction:
+Based on this passage:
+Standard Chinese (Standard Mandarin), based on the Beijing dialect of Mandarin, was adopted in the 1930s and is now an official language of both the People's Republic of China and the Republic of China (Taiwan), one of the four official languages of Singapore, and one of the six official languages of the United Nations. The written form, using the logograms known as Chinese characters, is shared by literate speakers of mutually unintelligible dialects. Since the 1950s, simplified Chinese characters have been promoted for use by the government of the People's Republic of China, while Singapore officially adopted simplified characters in 1976. Traditional characters remain in use in Taiwan, Hong Kong, Macau, and other countries with significant overseas Chinese speaking communities such as Malaysia (which although adopted simplified characters as the de facto standard in the 1980s, traditional characters still remain in widespread use).
+
+does chinese have an alphabet
+
+### Response:
+No, Chinese does not have an alphabet.
+
+### Instruction:
+Based on this passage:
+Japan (Japanese: 日本, Nippon or Nihon,[nb 1] and formally 日本国, Nihonkoku)[nb 2] is an island country in East Asia. It is situated in the northwest Pacific Ocean and is bordered on the west by the Sea of Japan, extending from the Sea of Okhotsk in the north toward the East China Sea, Philippine Sea, and Taiwan in the south. Japan is a part of the Ring of Fire, and spans an archipelago of 14,125 islands, with the five main islands being Hokkaido, Honshu (the "mainland"), Shikoku, Kyushu, and Okinawa. Tokyo is the nation's capital and largest city, followed by Yokohama, Osaka, Nagoya, Sapporo, Fukuoka, Kobe, and Kyoto.
+
+is hokkadio a part of japan
+
+### Response:
+Yes, Hokkadio is a part of Japan.
 
 ### Instruction:
 Based on this passage:
