@@ -8,19 +8,21 @@ from util import SmarterSet
 
 
 def create_model_for_generating(version: str, revision: str, load_8bit: str,
-                                lora: str):
-    util.create_model(version, revision, load_8bit)
-    return util.prepare_model_for_generating(load_8bit, lora)
+                                lora: str, verbose:bool=False, progress=gr.Progress(track_tqdm=True)):
+    util.create_model(version, revision, load_8bit, verbose)
+    return util.prepare_model_for_generating(load_8bit, lora, verbose)
 
 
 def create_model_for_finetuning(model: str, version: str, revision: str,
-                                load_8bit: str, model_choices: dict):
+                                load_8bit: str, model_choices: dict,
+                                verbose:bool=False,
+                                progress=gr.Progress(track_tqdm=True)):
     if model in model_choices.keys():
         target_modules = model_choices[model]["target_modules"]
     else:
         target_modules = ""
-    util.create_model(version=version, revision=revision, load_8bit=load_8bit)
-    return util.prepare_model_for_training(target_modules=target_modules)
+    util.create_model(version, revision, load_8bit, verbose)
+    return util.prepare_model_for_training(target_modules, verbose)
 
 
 def change_model_dropdown_choices(model_choices: dict, nested_key: str,
@@ -137,6 +139,7 @@ with gr.Blocks() as interface:
     STATE_TRUE = gr.State(value=True)
     STATE_FALSE = gr.State(value=False)
 
+    button_verbose = gr.Checkbox(label="Verbose", interactive=True)
     with gr.Accordion("Load Model For Generating") as accordion_load_model:
         with gr.Column():
             text_loaded_model = gr.Textbox(
@@ -228,7 +231,8 @@ with gr.Blocks() as interface:
                                       show_progress=True,
                                       inputs=[
                                           dropdown_version, dropdown_revision,
-                                          radio_load_8bit_model, dropdown_lora
+                                          radio_load_8bit_model, dropdown_lora,
+                                          button_verbose,
                                       ],
                                       outputs=text_loaded_model)
             button_load_model_f.click(create_model_for_finetuning,
@@ -237,7 +241,8 @@ with gr.Blocks() as interface:
                                           dropdown_model, dropdown_version,
                                           dropdown_revision,
                                           radio_load_8bit_model,
-                                          STATE_MODEL_CHOICES_DICT
+                                          STATE_MODEL_CHOICES_DICT,
+                                          button_verbose
                                       ],
                                       outputs=text_loaded_model)
             button_load_model_g.click(cache_recent_model_choices,
@@ -346,7 +351,8 @@ with gr.Blocks() as interface:
                             text_instruction, text_input, slider_temperature,
                             slider_top_p, slider_top_k, slider_beams,
                             slider_repetition_penalty, slider_length_penalty,
-                            slider_ngram_size, slider_max_tokens, STATE_TRUE
+                            slider_ngram_size, slider_max_tokens, STATE_TRUE,
+                            button_verbose,
                         ],
                         outputs=[output_g])
         with gr.Tab("Evaluate"):
@@ -384,7 +390,8 @@ with gr.Blocks() as interface:
             button_e.click(util.evaluate_model,
                            inputs=[
                                state_selected_data, radio_load_8bit_model,
-                               dropdown_lora, dropdown_version
+                               dropdown_lora, dropdown_version,
+                               button_verbose
                            ],
                            outputs=json_output)
         with gr.Tab("Boolq"):
@@ -467,7 +474,8 @@ with gr.Blocks() as interface:
                                    dropdown_checkpoint, slider_batch_size,
                                    slider_micro_batch_size,
                                    slider_save_eval_steps, slider_epochs,
-                                   slider_learning_rate, slide_val_set_size
+                                   slider_learning_rate, slide_val_set_size,
+                                   button_verbose
                                ],
                                outputs=[output_f])
 
