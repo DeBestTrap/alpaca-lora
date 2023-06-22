@@ -85,6 +85,7 @@ class SmarterSet(set):
 def create_model(version: str,
                  revision: str,
                  load_8bit: str,
+                 verbose:bool=False,
                  progress=gr.Progress(track_tqdm=True)):
     '''
     Loads a pretrianed model stored in a global variable named model.
@@ -99,7 +100,9 @@ def create_model(version: str,
     global loaded_model_text
 
     if not version or not revision:
-        return "Invalid Model"
+        if verbose:
+            print("Invalid Model: Choose a version and revision")
+        return "Invalid Model: Choose a version and revision"
 
     try:
         if model:
@@ -114,6 +117,10 @@ def create_model(version: str,
     else:
         load_8bit_bool = False
 
+    loaded_model_text = f"{version}, {revision}"
+    if verbose:
+        print(f"Loading: {loaded_model_text}{' ' if load_8bit_bool else 'not '}in 8 bit mode")
+
     model = AutoModelForCausalLM.from_pretrained(
         version,
         revision=revision,
@@ -123,12 +130,12 @@ def create_model(version: str,
     )
 
     tokenizer = AutoTokenizer.from_pretrained(version, add_eos_token=True)
-    loaded_model_text = f"{version}, {revision}"
     return loaded_model_text
 
 
 def prepare_model_for_generating(load_8bit: str,
                                  lora_weights: str,
+                                 verbose:bool=False,
                                  progress=gr.Progress(track_tqdm=True)):
     '''
     Load a PEFT model with a LoRA for generating text
@@ -140,6 +147,8 @@ def prepare_model_for_generating(load_8bit: str,
     global loaded_model_text
 
     if lora_weights == "":
+        if verbose:
+            print("Prepped for generating: No LoRA loaded")
         return f"Generating: {loaded_model_text}"
 
     if load_8bit == "True":
@@ -160,10 +169,13 @@ def prepare_model_for_generating(load_8bit: str,
     model.eval()
     if torch.__version__ >= "2" and sys.platform != "win32":
         model = torch.compile(model)
+    if verbose:
+        print(f"Prepped for generating: {lora_weights} LoRA loaded")
     return f"Generating: {loaded_model_text}, {lora_weights}"
 
 
 def prepare_model_for_training(target_modules: List[str],
+                               verbose:bool=False,
                                progress=gr.Progress(track_tqdm=True)):
     '''
     Load a PEFT model with hyperparameters to train a LoRA
@@ -185,6 +197,13 @@ def prepare_model_for_training(target_modules: List[str],
     )
     model = get_peft_model(model, config)
     tokenizer.pad_token_id = 0  # unk. we want this to be different from the eos token
+    if verbose:
+        print(f"""LoRA Hyperparameters:
+                r={LORA_R}
+                alpha={LORA_ALPHA}
+                target modules={target_modules}
+                dropout={LORA_DROPOUT}""")
+        print("Prepped model for finetuning!")
     return f"Finetuning: {loaded_model_text}"
 
 
@@ -260,6 +279,7 @@ def train(data_path: str,
           epochs: int,
           learning_rate: int,
           val_set_size: int,
+          verbose:bool=False,
           progress=gr.Progress(track_tqdm=True)):
     '''
     Trains a LoRA and saves it in the lora directory
@@ -271,23 +291,26 @@ def train(data_path: str,
     try:
         assert(model)
     except:
+        if verbose:
+            print("Wait for model to load before using")
         return "Wait for model to load before using"
     global loaded_model_text
 
     if lora_name == "New Lora":
         lora_name = "-".join(loaded_model_text.split(", "))
+        if verbose:
+            print("New LoRA Generated!")
+
 
     lora_name = lora_name.replace("/", "-")
     lora_name = lora_name.replace("\\", "-")
     output_dir = os.path.join("lora", lora_name)
+    print(f"LoRA Name: {lora_name} will be saved at {output_dir}")
 
     if checkpoint == "":
         checkpoint_dir = None
     else:
         checkpoint_dir = os.path.join("lora", lora_name, checkpoint)
-
-    print(lora_name)
-    print(checkpoint_dir)
 
     gradient_accumulation_steps = batch_size // micro_batch_size
 
@@ -343,9 +366,10 @@ def train(data_path: str,
     if torch.__version__ >= "2" and sys.platform != "win32":
         model = torch.compile(model)
 
+    if verbose:
+        print("Starting finetuning")
     trainer.train(resume_from_checkpoint=checkpoint_dir)
 
-    # TODO check
     model.save_pretrained(output_dir)
 
     print(
@@ -400,7 +424,8 @@ def generate(
         length_penalty=1,
         ngram_size=0,
         max_new_tokens=128,
-        use_generation_config=True,
+        use_generation_config:bool=True,
+        verbose:bool=False,
         progress=gr.Progress(track_tqdm=True),
         **kwargs,
 ):
@@ -414,8 +439,13 @@ def generate(
     try:
         assert(model)
     except:
+        if verbose:
+            print("Wait for model to load before using")
         return "Wait for model to load before using"
     prompt = generate_prompt(instruction, input)
+
+    if verbose:
+        print(f"-=-=-=-=-=-=-= Prompt =-=-=-=-=-=-=-\n{prompt}")
     inputs = tokenizer(prompt, return_tensors="pt")
     input_ids = inputs["input_ids"].to(device)
     if use_generation_config:
@@ -423,7 +453,6 @@ def generate(
             pad_token_id=-1,
             bos_token_id=0,
             eos_token_id=2,
-            # eos_token_id=2,
             # do_sample=True,
             temperature=temperature,
             top_p=top_p,
@@ -450,39 +479,18 @@ def generate(
         )
     s = generation_output.sequences[0]
     output = tokenizer.decode(s)
-    # return output
-    # print(f"OUTPUT: {output}")
-    # print(f"SPLIT: {output.split(instruction)})")
-    # output = output.split(instruction)[1].strip()
-    # print(f"FIRST: {output}")
-    # output = output.split("### Response:")[1].strip()
-    # print(f"SECOND: {output}")
-    # if "### Instruction:" in output:
-    #     return output.split("### Instruction:")[0].strip()
-    # return output
-
-    # most_recent_instruction = instruction.split("### Instruction:")[-1]
-    # response_splits = output.split("### Instruction:")
-    # for str in response_splits:
-    #     if most_recent_instruction in str:
-    #         return str
-    # print(f"----- SCREE\n{output}")
-    # print(f"----- INSTR\n{instruction}")
-    # return output
-
-    response = output[len(prompt):].split("### Instruction:")[0]
-    print(response)
+    response = output[len(prompt):].split("### Instruction:")[0].strip()
+    if verbose:
+        print(f"-=-=-=-=-=-=-= Output =-=-=-=-=-=-=-\n{output}")
+        print(f"-=-=-=-=-=-=-= Parsed Response =-=-=-=-=-=-=-\n{response}")
     return response 
-
-    # return output.split("### Response:")[1].strip()
-    # return output.split(
-    #     "### Response:")[1].strip() + "\n\nDEBUG=========" + output
 
 
 def evaluate_model(data_path: list,
                    load_8bit: str,
                    lora_weights: str,
                    base_model: str,
+                   verbose:bool=False,
                    progress=gr.Progress(track_tqdm=True)):
     '''
     Don't use yet
@@ -493,6 +501,8 @@ def evaluate_model(data_path: list,
         assert(model)
     except:
         # Havent tested returning strs to json block
+        if verbose:
+            print("Wait for model to load before using")
         return "Wait for model to load before using"
 
     if load_8bit == "True":
@@ -522,7 +532,7 @@ def evaluate_model(data_path: list,
         "BASE_MODEL": base_model
     }
     predictions = list(
-        map(lambda x, y: generate(x, y, use_generation_config=False),
+        map(lambda x, y: generate(x, y, verbose=verbose, use_generation_config=False),
             progress.tqdm(data["instruction"], desc="Generating Responses"),
             data["input"]))
 
@@ -648,7 +658,7 @@ Based on this passage:
         raise Exception()
 
 
-def generate_boolq_responses(prompt_style:str, progress=gr.Progress(track_tqdm=True)):
+def generate_boolq_responses(prompt_style:str, verbose:bool=False, progress=gr.Progress(track_tqdm=True)):
     '''
     Generates responses for the BoolQ dataset.
 
@@ -661,6 +671,8 @@ def generate_boolq_responses(prompt_style:str, progress=gr.Progress(track_tqdm=T
     try:
         assert(model)
     except:
+        if verbose:
+            print("Wait for model to load before using")
         return "Wait for model to load before using"
 
     data = load_dataset("boolq")
@@ -670,7 +682,7 @@ def generate_boolq_responses(prompt_style:str, progress=gr.Progress(track_tqdm=T
     
     predictions = list(
         map(
-            lambda x: generate(x, input=None, use_generation_config=False, max_new_tokens=5),
+            lambda x: generate(x, input=None, verbose=verbose, use_generation_config=False, max_new_tokens=5),
             instructions))
 
     results_predictions = dict()
