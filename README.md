@@ -51,12 +51,17 @@ Get the command to install for your system at
 https://pytorch.org/get-started/locally/
 * Note: At the time of writing the latest CUDA toolkit version is 12.1 and pytorch supports up to 11.7. It is said that NVIDIA makes the toolkit backwards compatible so it should work.
 
+For example what I would run (Stable, Windows, Pip, Python, CUDA 11.7): 
+```bash
+python -m pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu117
+```
+
 ### If you are not using Windows, skip this step
 bitsandbytes was compiled for Linux and don't support Windows however someone made a fix.
 
 1. Goto https://github.com/DeXtmL/bitsandbytes-win-prebuilt and download `libbitsandbytes_cuda116.dll`
-1. Place the dll into `root\venv\Lib\site-packages\bitsandbytes`
-1. Edit `root\venv\Lib\site-packages\bitsandbytes\cuda_setup\main.py`
+1. Place the dll into `.\venv\Lib\site-packages\bitsandbytes`
+1. Edit `.\venv\Lib\site-packages\bitsandbytes\cuda_setup\main.py`
   1. search for: `if not torch.cuda.is_available(): return 'libsbitsandbytes_cpu.so', None, None, None, None`
   1. replace with: `if torch.cuda.is_available(): return 'libbitsandbytes_cuda116.dll', None, None, None, None`
   1. search for this twice: `self.lib = ct.cdll.LoadLibrary(binary_path)`

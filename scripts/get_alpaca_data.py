@@ -25,18 +25,19 @@ def get_alpaca_data():
   if not os.path.isdir(data_dir):
     os.mkdir(data_dir)
 
+  def alpaca_helper(data_dir, data_path):
+    if not os.path.exists(os.path.join(data_dir, data_path)):
+      link = f"https://raw.githubusercontent.com/tloen/alpaca-lora/e04897baaec39280fac97f1ad2bf33059b0df643/{data_path}"
+      req = requests.get(link)
+      with open(os.path.join(data_dir, data_path), "w") as f:
+        json.dump(req.text, f)
+        print(f"{data_path} saved successfully.")
+
   # Fetch and save data
-  link = "https://raw.githubusercontent.com/tloen/alpaca-lora/e04897baaec39280fac97f1ad2bf33059b0df643/alpaca_data.json"
-  req = requests.get(link)
-  with open(os.path.join(data_dir, "alpaca_data.json"), "w") as f:
-    json.dump(req.text, f)
-
-  link = "https://raw.githubusercontent.com/tloen/alpaca-lora/e04897baaec39280fac97f1ad2bf33059b0df643/alpaca_data_cleaned.json"
-  req = requests.get(link)
-  with open(os.path.join(data_dir, "alpaca_data_cleaned.json"), "w") as f:
-    json.dump(req.text, f)
-
-  print("Alpaca data saved successfully.")
+  data_path = "alpaca_data.json"
+  alpaca_helper(data_dir, data_path)
+  data_path = "alpaca_data_cleaned.json"
+  alpaca_helper(data_dir, data_path)
   return True
 
 if __name__ == "__main__":

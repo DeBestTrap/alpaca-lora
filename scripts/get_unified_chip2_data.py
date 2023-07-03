@@ -27,16 +27,18 @@ def get_unified_chip2_data():
     os.mkdir(data_dir)
 
   # Fetch and save data
-  DATA_PATH = "nomic-ai/gpt4all_prompt_generations"
-  data = load_dataset(DATA_PATH)
-  data = data.filter(lambda x: x["source"] == "unified_chip2")
-  data = data.rename_column("prompt", "instruction")
-  data = data.rename_column("response", "output")
-  data = data.remove_columns("source")
-  data = data["train"].add_column("input", ["" for i in data["train"]])
-  data.to_json(os.path.join(data_dir, "unified_chip2.json"))
+  data_path = "unified_chip2.json"
+  if not os.path.exists(os.path.join(data_dir, data_path)):
+    DATA_PATH = "nomic-ai/gpt4all_prompt_generations"
+    data = load_dataset(DATA_PATH)
+    data = data.filter(lambda x: x["source"] == "unified_chip2")
+    data = data.rename_column("prompt", "instruction")
+    data = data.rename_column("response", "output")
+    data = data.remove_columns("source")
+    data = data["train"].add_column("input", ["" for i in data["train"]])
+    data.to_json(os.path.join(data_dir, data_path))
+    print("Unified chip 2 data saved successfully in alpaca format.")
 
-  print("Unified chip 2 data saved successfully in alpaca format.")
   return True
 
 if __name__ == "__main__":
