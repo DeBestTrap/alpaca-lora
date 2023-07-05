@@ -277,6 +277,7 @@ with gr.Blocks() as interface:
                     text_input = gr.Textbox(lines=2,
                                             label="Input",
                                             placeholder="none")
+                    checkbox_stream_output = gr.Checkbox(value=True, label="Stream Output", interactive=True)
                     slider_temperature = gr.Slider(
                         minimum=0,
                         maximum=1,
@@ -352,7 +353,7 @@ with gr.Blocks() as interface:
                             slider_top_p, slider_top_k, slider_beams,
                             slider_repetition_penalty, slider_length_penalty,
                             slider_ngram_size, slider_max_tokens, STATE_TRUE,
-                            button_verbose,
+                            checkbox_stream_output, button_verbose,
                         ],
                         outputs=[output_g])
         with gr.Tab("Evaluate"):

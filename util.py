@@ -12,6 +12,7 @@ from datasets import load_dataset, concatenate_datasets
 from transformers import AutoModelForCausalLM
 from transformers import AutoTokenizer
 from transformers import GenerationConfig
+from utils.callbacks import Stream, Iteratorize
 import collections.abc
 from peft import (
     PeftModel,
@@ -197,6 +198,13 @@ def prepare_model_for_training(target_modules: List[str],
     )
     model = get_peft_model(model, config)
     tokenizer.pad_token_id = 0  # unk. we want this to be different from the eos token
+
+    # not sure if this is needed for gptj
+    # unwind broken decapoda-research config
+    # model.config.pad_token_id = tokenizer.pad_token_id = 0  # unk
+    # model.config.bos_token_id = 1
+    # model.config.eos_token_id = 2
+
     if verbose:
         print(f"""LoRA Hyperparameters:
                 r={LORA_R}
@@ -425,6 +433,7 @@ def generate(
         ngram_size=0,
         max_new_tokens=128,
         use_generation_config:bool=True,
+        stream_output:bool=True,
         verbose:bool=False,
         progress=gr.Progress(track_tqdm=True),
         **kwargs,
@@ -453,7 +462,6 @@ def generate(
             pad_token_id=-1,
             bos_token_id=0,
             eos_token_id=2,
-            # do_sample=True,
             temperature=temperature,
             top_p=top_p,
             top_k=top_k,
@@ -461,14 +469,57 @@ def generate(
             repetition_penalty=repetition_penalty,
             length_penalty=length_penalty,
             no_repeat_ngram_size=ngram_size,
-            # max_new_tokens=128,
-            # length_penalty=-1.0,
-            # early_stopping=True,
             **kwargs,
         )
     else:
         generation_config = None
 
+    generate_params = {
+        "input_ids": input_ids,
+        "generation_config": generation_config,
+        "return_dict_in_generate": True,
+        "output_scores": True,
+        "max_new_tokens": max_new_tokens,
+    }
+    if stream_output:
+        # Stream the reply 1 token at a time.
+        # This is based on the trick of using 'stopping_criteria' to create an iterator,
+        # from https://github.com/oobabooga/text-generation-webui/blob/ad37f396fc8bcbab90e11ecf17c56c97bfbd4a9c/modules/text_generation.py#L216-L243.
+
+        def generate_with_callback(callback=None, **kwargs):
+            kwargs.setdefault(
+                "stopping_criteria", transformers.StoppingCriteriaList()
+            )
+            kwargs["stopping_criteria"].append(
+                Stream(callback_func=callback)
+            )
+            with torch.no_grad():
+                model.generate(**kwargs)
+
+        def generate_with_streaming(**kwargs):
+            return Iteratorize(
+                generate_with_callback, kwargs, callback=None
+            )
+
+        with generate_with_streaming(**generate_params) as generator:
+            if verbose:
+                print(f"-=-=-=-=-=-=-= Parsed Response =-=-=-=-=-=-=-")
+            for output in generator:
+                # new_tokens = len(output) - len(input_ids[0])
+                decoded_output = tokenizer.decode(output)
+
+                if output[-1] in [tokenizer.eos_token_id]:
+                    break
+
+                response = decoded_output[len(prompt):].split("### Instruction:")[0].strip()
+                if verbose:
+                    print(response)
+                yield response 
+                # yield prompter.get_response(decoded_output)
+                # will add this back in later
+        return  # early return for stream_output
+
+    # Without streaming
     with torch.no_grad():
         generation_output = model.generate(
             input_ids=input_ids,
@@ -483,7 +534,9 @@ def generate(
     if verbose:
         print(f"-=-=-=-=-=-=-= Output =-=-=-=-=-=-=-\n{output}")
         print(f"-=-=-=-=-=-=-= Parsed Response =-=-=-=-=-=-=-\n{response}")
-    return response 
+    yield response 
+    # yield prompter.get_response(output)
+    # will add this back in later
 
 
 def evaluate_model(data_path: list,
