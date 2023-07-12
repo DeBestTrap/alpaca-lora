@@ -5,6 +5,7 @@ import torch
 import gc
 import sys
 import json
+import time
 import gradio as gr
 import transformers
 import evaluate
@@ -280,6 +281,7 @@ def generate_and_tokenize_prompt(data_point):
 
 def train(data_path: str,
           lora_name: str,
+          new_lora_name: str,
           checkpoint: str,
           batch_size: int,
           micro_batch_size: int,
@@ -294,6 +296,8 @@ def train(data_path: str,
 
     Returns:
         A str indicating the result of the training
+
+    BUG No idea why but tqdm stopped working with dataset loading and training
     '''
     global model
     try:
@@ -305,7 +309,8 @@ def train(data_path: str,
     global loaded_model_text
 
     if lora_name == "New Lora":
-        lora_name = "-".join(loaded_model_text.split(", "))
+        # lora_name = "-".join(loaded_model_text.split(", "))
+        lora_name = new_lora_name
         if verbose:
             print("New LoRA Generated!")
 
@@ -376,14 +381,16 @@ def train(data_path: str,
 
     if verbose:
         print("Starting finetuning")
+    start = time.perf_counter()
     trainer.train(resume_from_checkpoint=checkpoint_dir)
+    end = time.perf_counter()
 
     model.save_pretrained(output_dir)
 
     print(
         "\n If there's a warning about missing keys above, please disregard :)"
     )
-    return f"LoRA saved at {output_dir}"
+    return f"LoRA saved at {output_dir}, Time elapsed: {end - start:.2f}s"
 
 
 def load_models_json():

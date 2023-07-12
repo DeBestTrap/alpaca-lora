@@ -44,7 +44,11 @@ def show_lora_checkpoints(choice):
         for name in os.listdir(os.path.join(os.getcwd(), "lora/", choice)):
             if os.path.isdir(os.path.join(os.getcwd(), "lora/", choice, name)):
                 l.append(name)
-    return change_dropdown_choices(l)
+    return [
+        change_dropdown_choices(l),
+        gr.Textbox.update(visible=(choice == "New Lora"), value=""),
+    ]
+    # return change_dropdown_choices(l)
 
     #         lambda choice: change_dropdown_choices(
     # [name for name in os.listdir(os.path.join(os.getcwd(), "lora/", choice))
@@ -68,6 +72,8 @@ def cache_recent_model_choices(model: str,
     cache = recent_models()
     if len(cache) > 5:
         cache.pop(0)
+    if lora == "New Lora":
+        return cache
     list = [
         f"{lora}" if lora else f"{version}, {revision}",
         {
@@ -101,8 +107,11 @@ def show_model_options_generate():
     # TODO Add Hide Lora Config
     '''
     Updates the accordion header to "Load Model For Generating".
-    Hides checkpoints dropdown, and load for finetuning button.
+    Hides checkpoints dropdown.
+    Hides load for finetuning button.
     Reveals load for generating button.
+    Updates Lora dropdown choices to only show directories in lora folder.
+    Hides new lora name textbox.
     '''
     return [
         gr.Accordion.update(label="Load Model For Generating"),
@@ -110,7 +119,8 @@ def show_model_options_generate():
         gr.Button.update(visible=False),
         gr.Button.update(visible=True),
         gr.Dropdown.update(
-            choices=os.listdir(os.path.join(os.getcwd(), "lora/")))
+            choices=os.listdir(os.path.join(os.getcwd(), "lora/"))),
+        gr.Textbox.update(visible=False),
     ]
 
 
@@ -118,8 +128,10 @@ def show_model_options_finetune():
     # TODO Add show Lora Config
     '''
     Updates the accordion header to "Load Model For Finetuning".
-    Hides load for generating button
-    Reveals checkpoints dropdown, and load for finetuning button
+    Hides load for generating button.
+    Reveals checkpoints dropdown.
+    Reveals load for finetuning button.
+    Updates Lora dropdown choices to with New Lora along with directories in lora folder.
     '''
     return [
         gr.Accordion.update(label="Load Model For Finetuning"),
@@ -166,6 +178,10 @@ with gr.Blocks() as interface:
                     choices=os.listdir(os.path.join(os.getcwd(), "lora/")),
                     label="Lora",
                     interactive=True).style(container=False)
+                text_new_lora_name = gr.Textbox(
+                    label="New Lora Name",
+                    visible=False,
+                    interactive=True)
                 dropdown_checkpoint = gr.Dropdown(
                     choices=[],
                     label="Lora Checkpoint",
@@ -215,7 +231,7 @@ with gr.Blocks() as interface:
             dropdown_lora.change(
                 show_lora_checkpoints,
                 inputs=dropdown_lora,
-                outputs=dropdown_checkpoint,
+                outputs=[dropdown_checkpoint, text_new_lora_name],
             )
 
             dataset_recent_models.click(change_dropdowns_to_recent_model,
@@ -265,7 +281,7 @@ with gr.Blocks() as interface:
                             outputs=[
                                 accordion_load_model, dropdown_checkpoint,
                                 button_load_model_f, button_load_model_g,
-                                dropdown_lora
+                                dropdown_lora, text_new_lora_name
                             ])
         with gr.Tab("Generate"):
             with gr.Row():
@@ -472,6 +488,7 @@ with gr.Blocks() as interface:
                 button_f.click(util.train,
                                inputs=[
                                    dropdown_data_path_f, dropdown_lora,
+                                   text_new_lora_name,
                                    dropdown_checkpoint, slider_batch_size,
                                    slider_micro_batch_size,
                                    slider_save_eval_steps, slider_epochs,
