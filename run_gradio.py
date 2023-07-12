@@ -70,8 +70,6 @@ def cache_recent_model_choices(model: str,
                                load_8bit: str,
                                lora: str):
     cache = recent_models()
-    if len(cache) > 5:
-        cache.pop(0)
     if lora == "New Lora":
         return cache
     list = [
@@ -87,10 +85,16 @@ def cache_recent_model_choices(model: str,
 
     if not list in cache:
         cache.append(list)
+    if len(cache) > 5:
+        cache.pop(0)
     with open("recent_models_cache.json", "w") as f:
         json.dump(cache, f)
     return cache
 
+def delete_cache():
+    with open("recent_models_cache.json", "w") as f:
+        json.dump([], f)
+    return []
 
 def change_dropdowns_to_recent_model(idx):
     choice = recent_models()[idx][1]
@@ -193,7 +197,13 @@ with gr.Blocks() as interface:
                     components=[gr.Dropdown(visible=False)],
                     label="Recently Loaded Models",
                     samples=recent_models(),
-                    type="index")
+                    type="index",
+                    scale=3,)
+                button_clear_cache = gr.Button(
+                    value="Clear Cache",
+                    variant="secondary",
+                    interactive=True,
+                    scale=1,)
             with gr.Accordion("FAQ", open=False):
                 gr.Markdown("""
                 ### What is the difference between version and revision?
@@ -275,6 +285,8 @@ with gr.Blocks() as interface:
                                           radio_load_8bit_model, dropdown_lora
                                       ],
                                       outputs=dataset_recent_models)
+            
+            button_clear_cache.click(delete_cache, outputs=dataset_recent_models)
 
     with gr.Tab("Generate/Evaluate") as tab_generate:
         tab_generate.select(show_model_options_generate,
