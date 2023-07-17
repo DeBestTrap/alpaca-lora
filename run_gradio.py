@@ -4,7 +4,7 @@ import gradio as gr
 from typing import List, Union, Dict
 import util
 import json
-from util import SmarterSet
+from utils.smarterset import SmarterSet
 
 
 def create_model_for_generating(version: str, revision: str, load_8bit: str,
@@ -524,6 +524,8 @@ with gr.Blocks() as interface:
                     LINUX: ~/.cache/huggingface/hub/models--decapoda-research--llama-7b-hf/snapshots/HASH/tokenizer_config.json
                     ```
 
+                    ### No Progress Bars
+                    No idea why but gradio no longer tracks tqdm progress bars.
                     """)
 
 interface.queue(concurrency_count=2).launch()
